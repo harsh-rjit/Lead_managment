@@ -22,39 +22,38 @@ const aiAnalysisSchema = new mongoose.Schema(
     },
     modelUsed: {
       type: String,
-      default: 'gemini-1.5-flash',
+      default: 'gemini-3.8-flash',
     },
+    // Required fields per AI specification
     score: {
       type: Number,
-      min: 0,
-      max: 100,
-      required: [true, 'AI Score is required'],
+      min: [0, 'Score cannot be less than 0'],
+      max: [100, 'Score cannot exceed 100'],
+      required: [true, 'Score from 0 to 100 is required'],
     },
-    intent: {
+    priority: {
       type: String,
-      enum: ['low', 'medium', 'high'],
-      required: true,
-    },
-    sentiment: {
-      type: String,
-      enum: ['positive', 'neutral', 'negative'],
-      default: 'neutral',
+      enum: {
+        values: ['LOW', 'MEDIUM', 'HIGH'],
+        message: 'Priority must be LOW, MEDIUM, or HIGH',
+      },
+      uppercase: true,
+      required: [true, 'Priority is required'],
+      index: true,
     },
     summary: {
       type: String,
-      default: '',
+      required: [true, 'Summary is required'],
+      trim: true,
     },
-    keyInsights: {
+    reasons: {
       type: [String],
       default: [],
     },
-    recommendedAction: {
+    recommendedNextAction: {
       type: String,
-      default: '',
-    },
-    generatedFollowUpDraft: {
-      type: String,
-      default: '',
+      required: [true, 'Recommended next action is required'],
+      trim: true,
     },
     tokensUsed: {
       promptTokens: { type: Number, default: 0 },

@@ -215,12 +215,20 @@ export default function DashboardPage() {
                   : 'Restricted: Sales reps only access their assigned leads.'}
               </p>
             </div>
-            <button
-              onClick={() => runRbacTest('Team Leads', getTeamLeads, 'admin, manager')}
-              className="mt-4 text-xs font-semibold text-blue-600 hover:text-blue-700 text-left cursor-pointer"
-            >
-              Verify Team Leads Access →
-            </button>
+            <div className="mt-4 flex flex-col gap-2 pt-2 border-t border-slate-100">
+              <Link
+                to="/leads"
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center"
+              >
+                Open Lead Pipeline <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Link>
+              <button
+                onClick={() => runRbacTest('Team Leads', getTeamLeads, 'admin, manager')}
+                className="text-[11px] font-medium text-slate-500 hover:text-slate-800 text-left cursor-pointer"
+              >
+                Verify Backend RBAC Check →
+              </button>
+            </div>
           </div>
         </div>
       </div>

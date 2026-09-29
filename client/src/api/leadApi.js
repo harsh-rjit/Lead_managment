@@ -55,3 +55,20 @@ export const getMyLeads = async () => {
   const response = await axiosClient.get('/api/v1/leads/my-leads');
   return response.data;
 };
+
+/**
+ * Trigger AI analysis for a lead using Gemini API
+ * Strictly calls backend endpoint; API key is never exposed to client
+ */
+export const analyzeLeadWithAI = async (leadId) => {
+  const response = await axiosClient.post(`/api/v1/ai/analyze/${leadId}`);
+  return response.data;
+};
+
+/**
+ * Retrieve latest AI analysis for a lead
+ */
+export const getLeadAnalysis = async (leadId) => {
+  const response = await axiosClient.get(`/api/v1/ai/lead/${leadId}`);
+  return response.data;
+};

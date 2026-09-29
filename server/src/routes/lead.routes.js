@@ -5,28 +5,43 @@ import {
   getLeadById,
   updateLead,
   deleteLead,
-  getTeamLeads,
-  getMyLeads,
 } from '../controllers/lead.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/rbac.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
-import { createLeadSchema, updateLeadSchema } from '../validations/lead.validation.js';
+import {
+  createLeadSchema,
+  updateLeadSchema,
+  queryLeadsSchema,
+  leadIdParamSchema,
+} from '../validations/lead.validation.js';
 
 const router = Router();
 
-// All lead routes require authentication
+// All lead endpoints require valid JWT authentication
 router.use(authenticateToken);
 
-// Role-specific overviews
-router.get('/team', authorizeRoles('admin', 'manager'), getTeamLeads);
-router.get('/my-leads', authorizeRoles('admin', 'manager', 'sales'), getMyLeads);
-
-// General Lead CRUD with multi-tenant isolation
-router.get('/', getLeads);
+// POST /api/leads - Create new lead
 router.post('/', validate(createLeadSchema), createLead);
-router.get('/:id', getLeadById);
+
+// GET /api/leads - Query leads with pagination, search, and filters
+router.get('/', validate(queryLeadsSchema), getLeads);
+
+// GET /api/leads/:id - Retrieve single lead details
+router.get('/:id', validate(leadIdParamSchema), getLeadById);
+
+// PUT /api/leads/:id - Full/Partial update of lead
+router.put('/:id', validate(updateLeadSchema), updateLead);
+
+// PATCH /api/leads/:id - Convenience alias for PUT
 router.patch('/:id', validate(updateLeadSchema), updateLead);
-router.delete('/:id', authorizeRoles('admin', 'manager'), deleteLead);
+
+// DELETE /api/leads/:id - Delete lead (Admin & Manager only)
+router.delete(
+  '/:id',
+  authorizeRoles('admin', 'manager'),
+  validate(leadIdParamSchema),
+  deleteLead
+);
 
 export default router;

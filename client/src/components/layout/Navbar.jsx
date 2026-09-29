@@ -16,6 +16,7 @@ export default function Navbar() {
   const authNavLinks = isAuthenticated
     ? [
         { name: 'Dashboard', path: '/dashboard' },
+        { name: 'Leads', path: '/leads' },
         ...(user?.role === 'admin'
           ? [
               { name: 'Team', path: '/team' },

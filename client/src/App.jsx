@@ -7,6 +7,8 @@ import BlueprintPage from './pages/BlueprintPage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import LeadsPage from './pages/LeadsPage';
+import LeadDetailPage from './pages/LeadDetailPage';
 import TeamManagementPage from './pages/TeamManagementPage';
 import OrgSettingsPage from './pages/OrgSettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -28,6 +30,8 @@ export default function App() {
             {/* General Protected Routes (All Authenticated Roles) */}
             <Route element={<ProtectedRoute />}>
               <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="leads" element={<LeadsPage />} />
+              <Route path="leads/:id" element={<LeadDetailPage />} />
 
               {/* Admin-Only Protected Routes */}
               <Route element={<RoleBasedRoute allowedRoles={['admin']} />}>
