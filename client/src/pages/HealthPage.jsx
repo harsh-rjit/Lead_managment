@@ -10,7 +10,8 @@ import {
   Globe, 
   Cpu, 
   ShieldCheck, 
-  ArrowRight
+  ArrowRight,
+  Database
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -215,6 +216,40 @@ export default function HealthPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Database Connection Status */}
+              {healthData.database && (
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                      healthData.database.status === 'connected' 
+                        ? 'bg-emerald-100 text-emerald-700' 
+                        : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      <Database className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        MongoDB Database: 
+                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold ${
+                          healthData.database.status === 'connected'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            healthData.database.status === 'connected' ? 'bg-emerald-500' : 'bg-amber-500'
+                          }`}></span>
+                          {healthData.database.status}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {healthData.database.name ? `Database: ${healthData.database.name}` : 'Atlas Cluster'} 
+                        {healthData.database.host && ` • Host: ${healthData.database.host}`}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Raw JSON Payload */}
               <div>
