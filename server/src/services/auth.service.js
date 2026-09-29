@@ -1,7 +1,9 @@
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Organization from '../models/Organization.js';
 import AppError from '../utils/AppError.js';
+import { config } from '../config/env.js';
 
 /**
  * Generate a clean URL-friendly slug from organization name.
@@ -27,14 +29,25 @@ const generateOrgSlug = async (name) => {
 
 class AuthService {
   /**
-   * Register a new Admin User along with their Organization
+   * Generates a signed JWT with tenant and authorization context
    *
-   * @param {Object} registrationData
-   * @param {string} registrationData.name
-   * @param {string} registrationData.email
-   * @param {string} registrationData.password
-   * @param {string} registrationData.organizationName
-   * @returns {Promise<Object>} Created user and organization records (sanitized)
+   * @param {Object} user - User document
+   * @returns {string} Signed JWT token string
+   */
+  generateToken(user) {
+    const payload = {
+      userId: user._id.toString(),
+      organizationId: user.organizationId.toString(),
+      role: user.role,
+    };
+
+    return jwt.sign(payload, config.jwtSecret, {
+      expiresIn: config.jwtExpiresIn,
+    });
+  }
+
+  /**
+   * Register a new Admin User along with their Organization
    */
   async register({ name, email, password, organizationName }) {
     const normalizedEmail = email.toLowerCase().trim();
@@ -80,7 +93,7 @@ class AuthService {
       throw userError;
     }
 
-    // 6. Return sanitized response (Crucial: never return password or passwordHash)
+    // 6. Return sanitized response (never return password or passwordHash)
     return {
       user: {
         id: user._id,
@@ -97,6 +110,107 @@ class AuthService {
         plan: organization.plan,
         status: organization.status,
         createdAt: organization.createdAt,
+      },
+    };
+  }
+
+  /**
+   * Authenticate user credentials and issue signed JWT
+   *
+   * @param {Object} credentials
+   * @param {string} credentials.email
+   * @param {string} credentials.password
+   * @returns {Promise<Object>} Token, user profile, and organization details
+   */
+  async login({ email, password }) {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // 1. Find user by email and explicitly include passwordHash (select: false on schema)
+    const user = await User.findOne({ email: normalizedEmail }).select('+passwordHash');
+    if (!user) {
+      // Intentionally generic error to prevent email enumeration attacks
+      throw new AppError('Invalid email or password.', 401);
+    }
+
+    // 2. Check account status
+    if (user.status !== 'active') {
+      throw new AppError(
+        'Your account is currently inactive or suspended. Please contact support.',
+        403
+      );
+    }
+
+    // 3. Compare supplied password with bcrypt hash
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new AppError('Invalid email or password.', 401);
+    }
+
+    // 4. Update lastLoginAt timestamp
+    user.lastLoginAt = new Date();
+    await user.save({ validateBeforeSave: false });
+
+    // 5. Fetch associated Organization
+    const organization = await Organization.findById(user.organizationId);
+    if (!organization || organization.status === 'suspended') {
+      throw new AppError('The organization associated with this account is inactive.', 403);
+    }
+
+    // 6. Generate signed JWT containing userId, organizationId, and role
+    const token = this.generateToken(user);
+
+    // 7. Return token and sanitized profile
+    return {
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        lastLoginAt: user.lastLoginAt,
+      },
+      organization: {
+        id: organization._id,
+        name: organization.name,
+        slug: organization.slug,
+        plan: organization.plan,
+      },
+    };
+  }
+
+  /**
+   * Retrieve current user profile and organization info from verified token identity
+   *
+   * @param {string} userId
+   * @returns {Promise<Object>}
+   */
+  async getCurrentUser(userId) {
+    const user = await User.findById(userId);
+    if (!user || user.status !== 'active') {
+      throw new AppError('User account not found or no longer active.', 404);
+    }
+
+    const organization = await Organization.findById(user.organizationId);
+    if (!organization) {
+      throw new AppError('Organization not found.', 404);
+    }
+
+    return {
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+      },
+      organization: {
+        id: organization._id,
+        name: organization.name,
+        slug: organization.slug,
+        plan: organization.plan,
       },
     };
   }

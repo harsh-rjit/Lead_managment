@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, Menu, X, Sparkles } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { Menu, X, Sparkles, LogOut, User, LayoutDashboard } from 'lucide-react';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, organization, isAuthenticated, logout } = useAuth();
 
-  const navLinks = [
+  const baseNavLinks = [
     { name: 'System Health', path: '/' },
     { name: 'Architecture Blueprint', path: '/blueprint' },
-    { name: 'Register Org', path: '/register' },
   ];
+
+  const authNavLinks = isAuthenticated
+    ? [{ name: 'Dashboard', path: '/dashboard' }, ...baseNavLinks]
+    : [...baseNavLinks, { name: 'Register Org', path: '/register' }];
 
   const isActive = (path) => location.pathname === path;
 
@@ -33,7 +38,7 @@ export default function Navbar() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
+            {authNavLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
@@ -48,18 +53,47 @@ export default function Navbar() {
             ))}
           </nav>
 
-          {/* Desktop Right CTA */}
+          {/* Desktop Right Actions */}
           <div className="hidden md:flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-xs text-slate-600 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Client: Ready
-            </div>
-            <Link
-              to="/register"
-              className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs shadow-sm transition"
-            >
-              Get Started
-            </Link>
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/dashboard"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition text-xs"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
+                    {user?.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="font-semibold text-slate-800">{user?.name}</span>
+                  <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold uppercase text-[10px]">
+                    {user?.role}
+                  </span>
+                </Link>
+
+                <button
+                  onClick={logout}
+                  title="Sign Out"
+                  className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="px-3.5 py-1.5 rounded-lg text-slate-700 hover:text-slate-900 font-medium text-xs transition"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs shadow-sm transition"
+                >
+                  Get Started
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -78,7 +112,7 @@ export default function Navbar() {
       {/* Mobile menu dropdown */}
       {mobileMenuOpen && (
         <div className="md:hidden border-b border-slate-200 bg-white px-4 pt-2 pb-4 space-y-1">
-          {navLinks.map((link) => (
+          {authNavLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
@@ -92,6 +126,25 @@ export default function Navbar() {
               {link.name}
             </Link>
           ))}
+          {isAuthenticated ? (
+            <button
+              onClick={() => {
+                logout();
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-rose-600 hover:bg-rose-50"
+            >
+              Sign Out
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-md text-base font-medium text-indigo-600"
+            >
+              Sign In
+            </Link>
+          )}
         </div>
       )}
     </header>

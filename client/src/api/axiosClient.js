@@ -10,7 +10,7 @@ const axiosClient = axios.create({
   },
 });
 
-// Request Interceptor: Attach token if available (for future auth)
+// Request Interceptor: Attach token if available
 axiosClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -24,12 +24,18 @@ axiosClient.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Standardize error formatting
+// Response Interceptor: Standardize error formatting and handle token expiry
 axiosClient.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
+    // Auto-clear invalid/expired token if 401 occurs outside of login attempt
+    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
+      localStorage.removeItem('token');
+      window.dispatchEvent(new Event('auth:unauthorized'));
+    }
+
     // Custom error object for clean UI handling
     const formattedError = {
       message:
