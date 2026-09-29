@@ -1,11 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import { config } from './config/env.js';
-import healthRoutes from './routes/health.routes.js';
+import apiRoutes from './routes/index.js';
+import notFoundHandler from './middleware/notFound.middleware.js';
+import errorHandler from './middleware/error.middleware.js';
 
 const app = express();
 
-// Enable Cross-Origin Resource Sharing (CORS)
+// 1. Cross-Origin Resource Sharing (CORS) Middleware
 app.use(
   cors({
     origin: [config.clientUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'],
@@ -13,10 +15,11 @@ app.use(
   })
 );
 
-// Body parser for JSON payloads
-app.use(express.json());
+// 2. Body Parser Middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Base request logging (helpful for development & debugging)
+// 3. Request Logging Middleware (Development visibility)
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
@@ -26,24 +29,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Mount Routes
-app.use('/api/health', healthRoutes);
+// 4. API Routes (Versioned & Root API prefixes)
+app.use('/api/v1', apiRoutes);
+app.use('/api', apiRoutes); // Backwards compatibility for /api/health
 
-// 404 Handler for unrecognized endpoints
-app.use((req, res) => {
-  res.status(404).json({
-    status: 'error',
-    message: `Route not found: ${req.method} ${req.originalUrl}`,
-  });
-});
+// 5. 404 Route Not Found Handler (Must be registered after all routes)
+app.use(notFoundHandler);
 
-// Centralized Error Handling Middleware
-app.use((err, req, res, next) => {
-  console.error('Unhandled Application Error:', err);
-  res.status(err.status || 500).json({
-    status: 'error',
-    message: err.message || 'Internal Server Error',
-  });
-});
+// 6. Centralized Global Error Handler (Must be the last middleware in the pipeline)
+app.use(errorHandler);
 
 export default app;

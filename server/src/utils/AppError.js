@@ -1,0 +1,17 @@
+/**
+ * Custom AppError class for operational errors.
+ * Distinguishes known business/client errors from unexpected server bugs.
+ */
+export class AppError extends Error {
+  constructor(message, statusCode = 500) {
+    super(message);
+
+    this.statusCode = statusCode;
+    this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
+    this.isOperational = true; // Flag identifying trusted operational errors
+
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export default AppError;
