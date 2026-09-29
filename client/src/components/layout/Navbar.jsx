@@ -14,7 +14,16 @@ export default function Navbar() {
   ];
 
   const authNavLinks = isAuthenticated
-    ? [{ name: 'Dashboard', path: '/dashboard' }, ...baseNavLinks]
+    ? [
+        { name: 'Dashboard', path: '/dashboard' },
+        ...(user?.role === 'admin'
+          ? [
+              { name: 'Team', path: '/team' },
+              { name: 'Settings', path: '/settings' },
+            ]
+          : []),
+        ...baseNavLinks,
+      ]
     : [...baseNavLinks, { name: 'Register Org', path: '/register' }];
 
   const isActive = (path) => location.pathname === path;
