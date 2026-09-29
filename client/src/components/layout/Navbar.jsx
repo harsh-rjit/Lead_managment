@@ -9,6 +9,7 @@ export default function Navbar() {
   const navLinks = [
     { name: 'System Health', path: '/' },
     { name: 'Architecture Blueprint', path: '/blueprint' },
+    { name: 'Register Org', path: '/register' },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -53,6 +54,12 @@ export default function Navbar() {
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Client: Ready
             </div>
+            <Link
+              to="/register"
+              className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs shadow-sm transition"
+            >
+              Get Started
+            </Link>
           </div>
 
           {/* Mobile menu button */}
