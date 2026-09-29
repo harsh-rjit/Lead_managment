@@ -1,5 +1,10 @@
 import mongoose from 'mongoose';
 
+// Enums for strict validation across the database layer
+export const LEAD_STATUS = ['new', 'contacted', 'qualified', 'proposal_sent', 'won', 'lost'];
+export const LEAD_PRIORITY = ['low', 'medium', 'high', 'urgent'];
+export const LEAD_SOURCE = ['manual', 'csv', 'website', 'referral', 'linkedin', 'other'];
+
 const leadSchema = new mongoose.Schema(
   {
     organizationId: {
@@ -26,51 +31,57 @@ const leadSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
       default: '',
+      match: [/^(|\S+@\S+\.\S+)$/, 'Please provide a valid email address'],
     },
     phone: {
       type: String,
       trim: true,
       default: '',
+      maxlength: [30, 'Phone number cannot exceed 30 characters'],
     },
     company: {
       type: String,
       trim: true,
       default: '',
+      maxlength: [100, 'Company name cannot exceed 100 characters'],
+    },
+    requirement: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: [2000, 'Requirement description cannot exceed 2000 characters'],
+    },
+    budget: {
+      type: Number,
+      min: [0, 'Budget cannot be negative'],
+      default: 0,
     },
     source: {
       type: String,
-      enum: ['manual', 'csv', 'website', 'referral', 'other'],
+      enum: {
+        values: LEAD_SOURCE,
+        message: '{VALUE} is not a valid lead source',
+      },
       default: 'manual',
+      index: true,
     },
     status: {
       type: String,
-      enum: ['new', 'contacted', 'qualified', 'lost', 'won'],
+      enum: {
+        values: LEAD_STATUS,
+        message: '{VALUE} is not a valid lead status',
+      },
       default: 'new',
       index: true,
     },
-    score: {
-      type: Number,
-      min: 0,
-      max: 100,
-      default: null,
-    },
-    scoreReason: {
+    priority: {
       type: String,
-      default: '',
-    },
-    aiIntent: {
-      type: String,
-      enum: ['low', 'medium', 'high', null],
-      default: null,
-    },
-    suggestedFollowUp: {
-      type: String,
-      default: '',
-    },
-    customFields: {
-      type: Map,
-      of: mongoose.Schema.Types.Mixed,
-      default: {},
+      enum: {
+        values: LEAD_PRIORITY,
+        message: '{VALUE} is not a valid lead priority',
+      },
+      default: 'medium',
+      index: true,
     },
   },
   {
@@ -78,9 +89,9 @@ const leadSchema = new mongoose.Schema(
   }
 );
 
-// Compound indexes for high-speed tenant-scoped queries
-leadSchema.index({ organizationId: 1, status: 1, createdAt: -1 });
-leadSchema.index({ organizationId: 1, assignedTo: 1 });
+// High-performance compound indexes for common tenant-scoped dashboard queries
+leadSchema.index({ organizationId: 1, status: 1, priority: 1, createdAt: -1 });
+leadSchema.index({ organizationId: 1, assignedTo: 1, status: 1 });
 leadSchema.index({ organizationId: 1, email: 1 });
 
 const Lead = mongoose.model('Lead', leadSchema);

@@ -18,29 +18,31 @@ const aiAnalysisSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null,
+      index: true,
     },
     modelUsed: {
       type: String,
       default: 'gemini-1.5-flash',
     },
-    promptTokens: {
-      type: Number,
-      default: 0,
-    },
-    responseTokens: {
-      type: Number,
-      default: 0,
-    },
     score: {
       type: Number,
       min: 0,
       max: 100,
-      default: null,
+      required: [true, 'AI Score is required'],
     },
     intent: {
       type: String,
-      enum: ['low', 'medium', 'high', null],
-      default: null,
+      enum: ['low', 'medium', 'high'],
+      required: true,
+    },
+    sentiment: {
+      type: String,
+      enum: ['positive', 'neutral', 'negative'],
+      default: 'neutral',
+    },
+    summary: {
+      type: String,
+      default: '',
     },
     keyInsights: {
       type: [String],
@@ -50,11 +52,16 @@ const aiAnalysisSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
-    generatedDraft: {
+    generatedFollowUpDraft: {
       type: String,
       default: '',
     },
-    rawResponse: {
+    tokensUsed: {
+      promptTokens: { type: Number, default: 0 },
+      responseTokens: { type: Number, default: 0 },
+      totalTokens: { type: Number, default: 0 },
+    },
+    rawGeminiResponse: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
@@ -64,9 +71,8 @@ const aiAnalysisSchema = new mongoose.Schema(
   }
 );
 
-// Compound indexes for tenant-scoped analysis lookups
-aiAnalysisSchema.index({ organizationId: 1, leadId: 1 });
-aiAnalysisSchema.index({ organizationId: 1, createdAt: -1 });
+// High-speed tenant-scoped lookups
+aiAnalysisSchema.index({ organizationId: 1, leadId: 1, createdAt: -1 });
 
 const AIAnalysis = mongoose.model('AIAnalysis', aiAnalysisSchema);
 

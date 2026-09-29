@@ -46,9 +46,26 @@ class LeadService {
       query.status = status;
     }
 
+    if (priority) {
+      query.priority = priority;
+    }
+
+    if (source) {
+      query.source = source;
+    }
+
+    if (assignedTo && userRole !== 'sales') {
+      query.assignedTo = assignedTo;
+    }
+
     if (search) {
       const searchRegex = new RegExp(search.trim(), 'i');
-      query.$or = [{ name: searchRegex }, { company: searchRegex }, { email: searchRegex }];
+      query.$or = [
+        { name: searchRegex },
+        { company: searchRegex },
+        { email: searchRegex },
+        { requirement: searchRegex },
+      ];
     }
 
     const skip = (page - 1) * limit;
