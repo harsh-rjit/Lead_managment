@@ -1,0 +1,64 @@
+# ==============================================================================
+# Git Ignore Configuration - AI Business Operations SaaS (OpsAI)
+# ==============================================================================
+
+# 1. Dependencies (Never commit dependencies; install via npm install)
+node_modules/
+*/node_modules/
+.pnp
+.pnp.js
+
+# 2. Environment Variables & Secrets (CRITICAL: Never commit real secrets or API keys)
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+server/.env
+client/.env
+
+# Explicitly allow example env files so teammates know required variables
+!.env.example
+!server/.env.example
+!client/.env.example
+
+# 3. Build & Distribution Outputs
+dist/
+build/
+client/dist/
+.vite/
+client/.vite/
+
+# 4. Logs & Debugging Files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 5. OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 6. IDE / Editor Specific Files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+
+# 7. Temporary, Cache & Diagnostic Artifacts
+temp/
+tmp/
+.cache/
+.eslintcache
