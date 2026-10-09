@@ -1,6 +1,7 @@
 import {
   analyzeLeadService,
   getLatestLeadAnalysisService,
+  generateFollowUpService,
 } from '../services/ai.service.js';
 
 /**
@@ -49,3 +50,31 @@ export const getLeadAnalysis = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Generate AI follow-up message for a lead
+ * POST /api/ai/follow-up/:leadId
+ */
+export const generateFollowUp = async (req, res, next) => {
+  try {
+    const { leadId } = req.params;
+    const { type, tone } = req.body;
+
+    const result = await generateFollowUpService({
+      leadId,
+      type,
+      tone,
+      user: req.user,
+    });
+
+    res.status(200).json({
+      success: true,
+      status: 'success',
+      message: 'Follow-up message generated successfully.',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

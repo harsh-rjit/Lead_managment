@@ -19,3 +19,25 @@ export const inviteUserSchema = {
     }),
   }),
 };
+
+export const updateUserRoleSchema = {
+  params: z.object({
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, { message: 'Invalid user ID' }),
+  }),
+  body: z.object({
+    role: z.enum(['admin', 'manager', 'sales'], {
+      required_error: 'Role must be admin, manager, or sales',
+    }),
+  }),
+};
+
+export const updateUserStatusSchema = {
+  params: z.object({
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, { message: 'Invalid user ID' }),
+  }),
+  body: z.object({
+    status: z.enum(['active', 'inactive'], {
+      required_error: 'Status must be active or inactive',
+    }),
+  }),
+};

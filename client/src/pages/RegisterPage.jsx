@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { registerUser } from '../api/authApi';
+import { useToast } from '../components/common/ToastContext';
+
+// Design System Primitives
+import Button from '../components/common/Button';
+import { Card } from '../components/common/Card';
+import Input from '../components/common/Input';
+import { Badge } from '../components/common/Badge';
+
 import {
   User,
   Mail,
@@ -13,7 +21,6 @@ import {
   Sparkles,
   ArrowRight,
   Shield,
-  Loader2,
 } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -29,11 +36,11 @@ export default function RegisterPage() {
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [successData, setSuccessData] = useState(null);
+  const toast = useToast();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear field-specific error as user types
     if (fieldErrors[name]) {
       setFieldErrors((prev) => ({ ...prev, [name]: null }));
     }
@@ -75,8 +82,11 @@ export default function RegisterPage() {
     try {
       const response = await registerUser(formData);
       setSuccessData(response.data);
+      toast.success('Organization registered successfully! You can now sign in.', 'Tenant Created');
     } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.');
+      const msg = err.message || 'Registration failed. Please try again.';
+      setError(msg);
+      toast.error(msg, 'Registration Error');
       if (err.data?.details) {
         const backendErrors = {};
         err.data.details.forEach((d) => {
@@ -90,55 +100,54 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto py-4 sm:py-8">
+    <div className="max-w-xl w-full mx-auto py-4 sm:py-8 px-4">
       {/* Brand Header */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 mb-3">
-          <Sparkles className="w-6 h-6" />
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600 text-white shadow-xs mb-3">
+          <Sparkles className="w-6 h-6 text-amber-300" />
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           Create Your SaaS Organization
         </h1>
-        <p className="text-slate-600 mt-2 text-sm sm:text-base">
+        <p className="text-slate-500 mt-2 text-xs sm:text-sm">
           Get started with AI Business Operations. You will be the primary administrator.
         </p>
       </div>
 
       {/* Success State Card */}
       {successData ? (
-        <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-6 sm:p-8 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+        <Card className="p-6 sm:p-8 space-y-6">
           <div className="flex items-center gap-3 text-emerald-700">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-7 h-7 text-emerald-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Organization Created!</h2>
-              <p className="text-sm text-slate-600">Admin account registered successfully.</p>
+              <h2 className="text-lg font-bold text-slate-900 tracking-tight">Organization Created!</h2>
+              <p className="text-xs text-slate-600">Admin account registered successfully.</p>
             </div>
           </div>
 
           {/* Details Summary */}
-          <div className="space-y-3 bg-slate-50 p-5 rounded-xl border border-slate-200 text-sm">
+          <div className="space-y-3 bg-slate-50 p-5 rounded-xl border border-slate-200 text-xs">
             <div className="flex justify-between py-1 border-b border-slate-200/60">
               <span className="text-slate-500 font-medium">Administrator</span>
-              <span className="font-semibold text-slate-800">{successData.user?.name}</span>
+              <span className="font-bold text-slate-800">{successData.user?.name}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200/60">
               <span className="text-slate-500 font-medium">Work Email</span>
-              <span className="font-semibold text-slate-800 font-mono text-xs sm:text-sm">
+              <span className="font-semibold text-slate-800 font-mono text-xs">
                 {successData.user?.email}
               </span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200/60">
               <span className="text-slate-500 font-medium">Role</span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-bold text-xs uppercase tracking-wider">
-                <Shield className="w-3 h-3" />
+              <Badge variant="purple" size="xs">
                 {successData.user?.role}
-              </span>
+              </Badge>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200/60">
               <span className="text-slate-500 font-medium">Organization</span>
-              <span className="font-semibold text-slate-800">
+              <span className="font-bold text-slate-800">
                 {successData.organization?.name}
               </span>
             </div>
@@ -150,202 +159,135 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-100 text-xs text-indigo-950 flex items-start gap-2.5">
-            <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold">Next in V1 Architecture:</p>
-              <p className="mt-0.5 text-indigo-900">
-                Your credentials are encrypted using bcrypt (10 rounds) and safely stored in MongoDB. Login and JWT issuance will be connected next.
-              </p>
-            </div>
-          </div>
-
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <Link
-              to="/"
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm transition-all"
-            >
-              Back to System Status
-              <ArrowRight className="w-4 h-4" />
+            <Link to="/login" className="flex-1">
+              <Button
+                variant="primary"
+                size="md"
+                fullWidth={true}
+                rightIcon={ArrowRight}
+              >
+                Proceed to Sign In
+              </Button>
             </Link>
-            <button
+            <Button
+              variant="outline"
+              size="md"
               onClick={() => {
                 setSuccessData(null);
                 setFormData({ name: '', email: '', password: '', organizationName: '' });
               }}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-sm transition-all cursor-pointer"
             >
-              Register Another Organization
-            </button>
+              Register Another Org
+            </Button>
           </div>
-        </div>
+        </Card>
       ) : (
         /* Registration Form Card */
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 sm:p-8">
-          {/* Error Alert */}
+        <Card className="p-6 sm:p-8">
           {error && (
             <div className="mb-6 rounded-xl bg-rose-50 border border-rose-200 p-4 text-rose-900 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-sm">Registration Failed</p>
+                <p className="font-bold text-xs">Registration Failed</p>
                 <p className="text-xs text-rose-700 mt-0.5">{error}</p>
               </div>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Organization Name */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Organization / Company Name
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  name="organizationName"
-                  value={formData.organizationName}
-                  onChange={handleChange}
-                  placeholder="e.g. Acme Sales Corp"
-                  disabled={loading}
-                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none ${
-                    fieldErrors.organizationName
-                      ? 'border-rose-300 bg-rose-50/30 text-rose-900 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                      : 'border-slate-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600'
-                  }`}
-                />
-              </div>
-              {fieldErrors.organizationName && (
-                <p className="text-xs text-rose-600 mt-1 font-medium">
-                  {fieldErrors.organizationName}
-                </p>
-              )}
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              label="Organization / Company Name"
+              name="organizationName"
+              required
+              value={formData.organizationName}
+              onChange={handleChange}
+              placeholder="e.g. Acme Sales Corp"
+              disabled={loading}
+              error={fieldErrors.organizationName}
+              icon={Building2}
+            />
 
-            {/* Administrator Full Name */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Your Full Name
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <User className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="e.g. Alex Morgan"
-                  disabled={loading}
-                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none ${
-                    fieldErrors.name
-                      ? 'border-rose-300 bg-rose-50/30 text-rose-900 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                      : 'border-slate-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600'
-                  }`}
-                />
-              </div>
-              {fieldErrors.name && (
-                <p className="text-xs text-rose-600 mt-1 font-medium">{fieldErrors.name}</p>
-              )}
-            </div>
+            <Input
+              label="Your Full Name"
+              name="name"
+              required
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="e.g. Alex Morgan"
+              disabled={loading}
+              error={fieldErrors.name}
+              icon={User}
+            />
 
-            {/* Work Email */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Work Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="alex@acmecorp.com"
-                  disabled={loading}
-                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none ${
-                    fieldErrors.email
-                      ? 'border-rose-300 bg-rose-50/30 text-rose-900 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                      : 'border-slate-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600'
-                  }`}
-                />
-              </div>
-              {fieldErrors.email && (
-                <p className="text-xs text-rose-600 mt-1 font-medium">{fieldErrors.email}</p>
-              )}
-            </div>
+            <Input
+              label="Work Email Address"
+              name="email"
+              type="email"
+              required
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="alex@acmecorp.com"
+              disabled={loading}
+              error={fieldErrors.email}
+              icon={Mail}
+            />
 
-            {/* Password */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="At least 8 characters (letters & numbers)"
-                  disabled={loading}
-                  className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none ${
-                    fieldErrors.password
-                      ? 'border-rose-300 bg-rose-50/30 text-rose-900 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                      : 'border-slate-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600'
-                  }`}
-                />
+            <Input
+              label="Password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              required
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="At least 8 characters (letters & numbers)"
+              disabled={loading}
+              error={fieldErrors.password}
+              icon={Lock}
+              helperText="Must be at least 8 characters, containing letters and numbers."
+              rightElement={
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-              </div>
-              {fieldErrors.password && (
-                <p className="text-xs text-rose-600 mt-1 font-medium">{fieldErrors.password}</p>
-              )}
-              <p className="text-xs text-slate-500 mt-1">
-                Must be at least 8 characters long, containing letters and numbers.
-              </p>
-            </div>
+              }
+            />
 
-            {/* Role Notice */}
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2.5 text-xs text-slate-600">
               <Shield className="w-4 h-4 text-indigo-600 shrink-0" />
               <span>
-                Registering creates a brand-new multi-tenant organization. You will be assigned the <strong>Admin</strong> role.
+                Registering creates a brand-new tenant organization with you as the <strong>Admin</strong>.
               </span>
             </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-98 disabled:opacity-50 text-white font-semibold text-sm shadow-md shadow-indigo-100 transition-all cursor-pointer"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating Organization & Account...
-                </>
-              ) : (
-                <>
-                  Complete Registration
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+            <div className="pt-2">
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                fullWidth={true}
+                loading={loading}
+                rightIcon={ArrowRight}
+              >
+                {loading ? 'Creating Organization...' : 'Complete Registration'}
+              </Button>
+            </div>
           </form>
-        </div>
+
+          <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-500">
+            Already have an account?{' '}
+            <Link
+              to="/login"
+              className="font-bold text-indigo-600 hover:text-indigo-700 transition"
+            >
+              Sign In
+            </Link>
+          </div>
+        </Card>
       )}
     </div>
   );

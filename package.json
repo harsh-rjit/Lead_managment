@@ -2,12 +2,15 @@
   "name": "ai-business-operations-saas",
   "version": "1.0.0",
   "description": "Production-style V1 full-stack AI Business Operations SaaS",
+  "type": "module",
   "scripts": {
     "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "start:server": "npm --prefix server start",
-    "build:client": "npm --prefix client run build"
+    "build:client": "npm --prefix client run build",
+    "seed": "npm --prefix server run seed",
+    "seed:clean": "npm --prefix server run seed:clean"
   },
   "keywords": [
     "saas",

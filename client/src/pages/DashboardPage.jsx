@@ -1,109 +1,241 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { isAdmin, isManager, isSales } from '../utils/rbac';
-import { testProtectedEndpoint } from '../api/authApi';
-import { getUsers } from '../api/userApi';
-import { getOrgSettings } from '../api/organizationApi';
-import { getTeamLeads, getMyLeads } from '../api/leadApi';
+import { isAdmin, isManager } from '../utils/rbac';
+import { getAnalyticsOverview } from '../api/analyticsApi';
+
+// Design System Primitives
+import Button from '../components/common/Button';
+import { Card } from '../components/common/Card';
+import { SkeletonCard } from '../components/common/Skeleton';
+import ErrorState from '../components/common/ErrorState';
+
+// Dashboard & Analytics Components
+import MetricCard from '../components/dashboard/MetricCard';
+import LeadsOverTimeChart from '../components/dashboard/LeadsOverTimeChart';
+import LeadsBySourceChart from '../components/dashboard/LeadsBySourceChart';
+import LeadStatusDistributionChart from '../components/dashboard/LeadStatusDistributionChart';
+
 import {
-  ShieldCheck,
   Building2,
-  User,
-  Key,
-  LogOut,
-  Send,
-  CheckCircle2,
   Sparkles,
   Users,
   Settings,
   Briefcase,
-  AlertTriangle,
-  Loader2,
-  XCircle,
   ArrowRight,
+  UserCheck,
+  Trophy,
+  Percent,
+  RefreshCw,
+  BarChart3,
+  XCircle,
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, organization, token, logout } = useAuth();
+  const { user, organization } = useAuth();
 
-  // RBAC test states
-  const [rbacTestResult, setRbacTestResult] = useState(null);
-  const [rbacLoading, setRbacLoading] = useState(false);
+  // Analytics State
+  const [analytics, setAnalytics] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState(null);
 
-  const runRbacTest = async (testName, apiCall, requiredRole) => {
-    setRbacLoading(true);
-    setRbacTestResult(null);
-
+  const fetchAnalytics = useCallback(async () => {
+    setLoadingAnalytics(true);
+    setAnalyticsError(null);
     try {
-      const response = await apiCall();
-      setRbacTestResult({
-        testName,
-        requiredRole,
-        success: true,
-        statusCode: 200,
-        message: 'Access Granted: Backend authorization check passed!',
-        data: response.data,
-      });
+      const res = await getAnalyticsOverview();
+      if (res.data) {
+        setAnalytics(res.data);
+      }
     } catch (err) {
-      setRbacTestResult({
-        testName,
-        requiredRole,
-        success: false,
-        statusCode: err.status || 403,
-        message: err.message || 'Access Forbidden: Backend blocked this action.',
-        data: err.data || null,
-      });
+      console.error('Failed to load analytics overview:', err);
+      setAnalyticsError(err.message || 'Could not load analytics metrics from the database.');
     } finally {
-      setRbacLoading(false);
+      setLoadingAnalytics(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      {/* Top Welcome Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-indigo-100">
-            {user?.name?.charAt(0).toUpperCase()}
+    <div className="space-y-8 max-w-7xl mx-auto pb-16">
+      {/* Top Welcome Header with Quick Actions */}
+      <Card className="p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center font-bold text-xl shadow-xs">
+              {user?.name?.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                  Welcome back, {user?.name}!
+                </h1>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
+                    user?.role === 'admin'
+                      ? 'bg-purple-50 text-purple-800 border-purple-200'
+                      : user?.role === 'manager'
+                      ? 'bg-blue-50 text-blue-800 border-blue-200'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  }`}
+                >
+                  {user?.role} Role
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-slate-400" />
+                {organization?.name} ({organization?.slug}) &bull; Tier:{' '}
+                <span className="font-semibold capitalize text-slate-700">{organization?.plan}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchAnalytics}
+              loading={loadingAnalytics}
+              icon={RefreshCw}
+            >
+              Refresh Data
+            </Button>
+
+            <Link to="/leads">
+              <Button
+                variant="primary"
+                size="sm"
+                rightIcon={ArrowRight}
+              >
+                Lead Pipeline
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </Card>
+
+      {/* Analytics Section Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <BarChart3 className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
-                Welcome back, {user?.name}!
-              </h1>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
-                  user?.role === 'admin'
-                    ? 'bg-purple-100 text-purple-800 border-purple-200'
-                    : user?.role === 'manager'
-                    ? 'bg-blue-100 text-blue-800 border-blue-200'
-                    : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                }`}
-              >
-                {user?.role} Role
-              </span>
-            </div>
-            <p className="text-sm text-slate-500 mt-0.5 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-slate-400" />
-              {organization?.name} ({organization?.slug}) • Tier:{' '}
-              <span className="font-semibold capitalize text-slate-700">{organization?.plan}</span>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">
+              Real-Time Pipeline Analytics & Intelligence
+            </h2>
+            <p className="text-xs text-slate-400">
+              Aggregated directly from MongoDB for your organization
             </p>
           </div>
         </div>
-
-        <button
-          onClick={logout}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-slate-200 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 text-slate-700 text-sm font-medium transition cursor-pointer self-start sm:self-auto"
-        >
-          <LogOut className="w-4 h-4" />
-          Sign Out
-        </button>
       </div>
 
-      {/* Role-Based Features Grid (UI Adaptation based on Role) */}
-      <div>
-        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
+      {/* Error State Banner */}
+      {analyticsError && (
+        <Card className="p-6">
+          <ErrorState
+            title="Failed to load analytics metrics"
+            message={analyticsError}
+            onRetry={fetchAnalytics}
+          />
+        </Card>
+      )}
+
+      {/* KPI Metric Cards Grid */}
+      {loadingAnalytics && !analytics ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <SkeletonCard key={i} className="h-32" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <MetricCard
+            title="Total Leads"
+            value={analytics?.totalLeads ?? 0}
+            subvalue="Active pipeline"
+            icon={Users}
+            colorScheme="indigo"
+          />
+
+          <MetricCard
+            title="Qualified"
+            value={analytics?.qualifiedLeads ?? 0}
+            subvalue={
+              analytics?.totalLeads > 0
+                ? `${Math.round(((analytics?.qualifiedLeads || 0) / analytics.totalLeads) * 100)}% of pipeline`
+                : '0% of pipeline'
+            }
+            icon={UserCheck}
+            colorScheme="purple"
+          />
+
+          <MetricCard
+            title="Closed Won"
+            value={analytics?.wonLeads ?? 0}
+            subvalue="Deals converted"
+            icon={Trophy}
+            colorScheme="emerald"
+          />
+
+          <MetricCard
+            title="Closed Lost"
+            value={analytics?.lostLeads ?? 0}
+            subvalue="Lost opportunities"
+            icon={XCircle}
+            colorScheme="rose"
+          />
+
+          <MetricCard
+            title="Conversion Rate"
+            value={`${analytics?.conversionRate ?? 0}%`}
+            subvalue={
+              analytics?.closedWinRate > 0
+                ? `${analytics.closedWinRate}% win rate`
+                : 'Won vs total'
+            }
+            icon={Percent}
+            colorScheme="amber"
+          />
+
+          <MetricCard
+            title="Avg AI Score"
+            value={
+              analytics?.averageAiScore != null ? `${analytics.averageAiScore}/100` : 'N/A'
+            }
+            subvalue={`${analytics?.totalAiAnalyses ?? 0} deals scored`}
+            icon={Sparkles}
+            colorScheme="indigo"
+            badgeText={
+              analytics?.averageAiScore != null
+                ? analytics.averageAiScore >= 80
+                  ? 'High Quality'
+                  : analytics.averageAiScore >= 50
+                  ? 'Moderate'
+                  : 'Low Quality'
+                : null
+            }
+          />
+        </div>
+      )}
+
+      {/* Visual Analytics Charts Section */}
+      <div className="space-y-6">
+        <LeadsOverTimeChart data={analytics?.leadsOverTime || []} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <LeadStatusDistributionChart statusData={analytics?.leadsByStatus || {}} />
+          <LeadsBySourceChart sourceData={analytics?.leadsBySource || {}} />
+        </div>
+      </div>
+
+      {/* Role-Based Features Grid */}
+      <div className="space-y-3">
+        <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
           Permitted Role Modules
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -111,13 +243,13 @@ export default function DashboardPage() {
           {isAdmin(user) ? (
             <Link
               to="/team"
-              className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 hover:shadow-sm transition flex flex-col justify-between group"
+              className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 hover:shadow-xs transition flex flex-col justify-between group"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                   <Users className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-bold uppercase bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-800 px-2 py-0.5 rounded-full border border-purple-200">
                   Admin Only
                 </span>
               </div>
@@ -156,13 +288,13 @@ export default function DashboardPage() {
           {isAdmin(user) ? (
             <Link
               to="/settings"
-              className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 hover:shadow-sm transition flex flex-col justify-between group"
+              className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-indigo-400 hover:shadow-xs transition flex flex-col justify-between group"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                   <Settings className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-bold uppercase bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold uppercase bg-purple-50 text-purple-800 px-2 py-0.5 rounded-full border border-purple-200">
                   Admin Only
                 </span>
               </div>
@@ -203,7 +335,7 @@ export default function DashboardPage() {
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                 <Briefcase className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold uppercase bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold uppercase bg-blue-50 text-blue-800 px-2 py-0.5 rounded-full border border-blue-200">
                 {isAdmin(user) || isManager(user) ? 'Available' : 'Manager Only'}
               </span>
             </div>
@@ -222,110 +354,9 @@ export default function DashboardPage() {
               >
                 Open Lead Pipeline <ArrowRight className="w-3.5 h-3.5 ml-1" />
               </Link>
-              <button
-                onClick={() => runRbacTest('Team Leads', getTeamLeads, 'admin, manager')}
-                className="text-[11px] font-medium text-slate-500 hover:text-slate-800 text-left cursor-pointer"
-              >
-                Verify Backend RBAC Check →
-              </button>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Interactive RBAC Live Backend Enforcement Tester */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-indigo-600" />
-            <h2 className="text-base font-bold text-slate-900">
-              Live Backend RBAC Enforcement Console
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Click any action below. Every button makes an actual HTTP request to the Express backend.
-            Notice how the backend intercepts unauthorized roles with an explicit <strong>HTTP 403 Forbidden</strong> response.
-          </p>
-        </div>
-
-        {/* Buttons Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <button
-            onClick={() => runRbacTest('Manage Users', getUsers, 'admin')}
-            disabled={rbacLoading}
-            className="p-3.5 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 text-left transition cursor-pointer"
-          >
-            <div className="text-[10px] font-bold uppercase text-purple-700">Admin Only</div>
-            <div className="font-semibold text-xs text-slate-900 mt-1">GET /api/v1/users</div>
-            <div className="text-[11px] text-slate-500 mt-0.5">Manage Team Members</div>
-          </button>
-
-          <button
-            onClick={() => runRbacTest('Org Settings', getOrgSettings, 'admin')}
-            disabled={rbacLoading}
-            className="p-3.5 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 text-left transition cursor-pointer"
-          >
-            <div className="text-[10px] font-bold uppercase text-purple-700">Admin Only</div>
-            <div className="font-semibold text-xs text-slate-900 mt-1">GET /organization/settings</div>
-            <div className="text-[11px] text-slate-500 mt-0.5">Tenant Configurations</div>
-          </button>
-
-          <button
-            onClick={() => runRbacTest('Team Leads', getTeamLeads, 'admin, manager')}
-            disabled={rbacLoading}
-            className="p-3.5 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-left transition cursor-pointer"
-          >
-            <div className="text-[10px] font-bold uppercase text-blue-700">Admin & Manager</div>
-            <div className="font-semibold text-xs text-slate-900 mt-1">GET /api/v1/leads/team</div>
-            <div className="text-[11px] text-slate-500 mt-0.5">All Organization Leads</div>
-          </button>
-
-          <button
-            onClick={() => runRbacTest('My Leads', getMyLeads, 'admin, manager, sales')}
-            disabled={rbacLoading}
-            className="p-3.5 rounded-xl border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50 text-left transition cursor-pointer"
-          >
-            <div className="text-[10px] font-bold uppercase text-emerald-700">All Roles</div>
-            <div className="font-semibold text-xs text-slate-900 mt-1">GET /api/v1/leads/my-leads</div>
-            <div className="text-[11px] text-slate-500 mt-0.5">Assigned Personal Leads</div>
-          </button>
-        </div>
-
-        {/* Live Test Feedback Banner */}
-        {rbacTestResult && (
-          <div
-            className={`p-4 rounded-xl border space-y-2 animate-in fade-in duration-150 ${
-              rbacTestResult.success
-                ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
-                : 'bg-rose-50/80 border-rose-200 text-rose-900'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-bold">
-                {rbacTestResult.success ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-rose-600" />
-                )}
-                <span>
-                  {rbacTestResult.testName} &bull; HTTP {rbacTestResult.statusCode}{' '}
-                  {rbacTestResult.success ? 'OK' : 'FORBIDDEN'}
-                </span>
-              </div>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/80 border border-slate-200">
-                User Role: {user?.role}
-              </span>
-            </div>
-
-            <p className="text-xs">{rbacTestResult.message}</p>
-
-            {rbacTestResult.data && (
-              <pre className="bg-slate-900 text-slate-100 p-3 rounded-lg font-mono text-xs overflow-x-auto mt-2">
-                {JSON.stringify(rbacTestResult.data, null, 2)}
-              </pre>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

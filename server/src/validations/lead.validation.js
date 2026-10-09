@@ -111,3 +111,65 @@ export const queryLeadsSchema = {
     sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
   }),
 };
+
+/**
+ * Validation schema for individual CSV rows during bulk import
+ */
+export const csvLeadRowSchema = z.object({
+  name: z
+    .string({ required_error: 'Lead name is required' })
+    .trim()
+    .min(2, { message: 'Lead name must be at least 2 characters long' })
+    .max(100, { message: 'Lead name cannot exceed 100 characters' }),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .optional()
+    .or(z.literal(''))
+    .refine((val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+      message: 'Please provide a valid email address',
+    }),
+  phone: z
+    .string()
+    .trim()
+    .max(30, { message: 'Phone number cannot exceed 30 characters' })
+    .optional()
+    .default(''),
+  company: z
+    .string()
+    .trim()
+    .max(100, { message: 'Company name cannot exceed 100 characters' })
+    .optional()
+    .default(''),
+  requirement: z
+    .string()
+    .trim()
+    .max(2000, { message: 'Requirement description cannot exceed 2000 characters' })
+    .optional()
+    .default(''),
+  budget: z
+    .preprocess((val) => {
+      if (val === undefined || val === null || val === '') return 0;
+      const cleanStr = String(val).replace(/[^0-9.-]+/g, '');
+      const num = Number(cleanStr);
+      return isNaN(num) ? 0 : num;
+    }, z.number().min(0, { message: 'Budget cannot be negative' }))
+    .default(0),
+  status: z
+    .preprocess((val) => {
+      if (!val || typeof val !== 'string') return 'new';
+      return val.trim().toLowerCase();
+    }, z.enum(LEAD_STATUS_ENUM, {
+      errorMap: () => ({ message: `Status must be one of: ${LEAD_STATUS_ENUM.join(', ')}` }),
+    }))
+    .default('new'),
+  priority: z
+    .preprocess((val) => {
+      if (!val || typeof val !== 'string') return 'medium';
+      return val.trim().toLowerCase();
+    }, z.enum(LEAD_PRIORITY_ENUM, {
+      errorMap: () => ({ message: `Priority must be one of: ${LEAD_PRIORITY_ENUM.join(', ')}` }),
+    }))
+    .default('medium'),
+});

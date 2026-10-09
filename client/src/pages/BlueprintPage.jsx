@@ -1,5 +1,6 @@
 import React from 'react';
 import { Layers, Database, Shield, Bot, FileSpreadsheet, BarChart3, CheckCircle } from 'lucide-react';
+import { Card } from '../components/common/Card';
 
 export default function BlueprintPage() {
   const sections = [
@@ -48,13 +49,13 @@ export default function BlueprintPage() {
   ];
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          AI Business Operations SaaS — Architecture Blueprint
+    <div className="space-y-8 max-w-5xl mx-auto pb-16">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+          AI Business Operations SaaS &mdash; Architecture Blueprint
         </h1>
-        <p className="text-slate-600 mt-1">
-          High-level design and engineering foundations approved for upcoming V1 milestones.
+        <p className="text-slate-500 mt-1 text-xs sm:text-sm">
+          High-level design and engineering foundations approved for current V1 production milestones.
         </p>
       </div>
 
@@ -62,42 +63,42 @@ export default function BlueprintPage() {
         {sections.map((item, index) => {
           const Icon = item.icon;
           return (
-            <div
+            <Card
               key={index}
-              className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col gap-3"
+              className="p-5 flex flex-col gap-3"
             >
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${item.color}`}>
                   <Icon className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-slate-900 text-base">{item.title}</h3>
+                <h3 className="font-bold text-slate-900 text-sm sm:text-base tracking-tight">{item.title}</h3>
               </div>
-              <p className="text-slate-600 text-sm leading-relaxed">{item.description}</p>
-            </div>
+              <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">{item.description}</p>
+            </Card>
           );
         })}
       </div>
 
-      <div className="p-6 rounded-2xl bg-indigo-50 border border-indigo-100">
-        <h3 className="font-bold text-indigo-950 text-base mb-2">Current Implementation Status</h3>
-        <ul className="space-y-2 text-sm text-indigo-900">
-          <li className="flex items-center gap-2">
+      <div className="p-6 rounded-2xl bg-indigo-50/80 border border-indigo-100">
+        <h3 className="font-bold text-indigo-950 text-sm sm:text-base mb-3 tracking-tight">Current Implementation Status</h3>
+        <ul className="space-y-2.5 text-xs sm:text-sm text-indigo-900">
+          <li className="flex items-center gap-2.5">
             <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Frontend React 19 + Vite + Tailwind CSS v4 layout operational</span>
+            <span>Frontend React 19 + Vite + Tailwind CSS v4 design system operational</span>
           </li>
-          <li className="flex items-center gap-2">
+          <li className="flex items-center gap-2.5">
             <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>Backend Node.js 22 + Express 5 ES Module server operational</span>
           </li>
-          <li className="flex items-center gap-2">
+          <li className="flex items-center gap-2.5">
             <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Axios reusable client with interceptors configured</span>
+            <span>Axios reusable client with auth interceptors configured</span>
           </li>
-          <li className="flex items-center gap-2">
+          <li className="flex items-center gap-2.5">
             <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>CORS & environment variables (.env) connected and validated</span>
+            <span>Multi-tenant database schema & role-based route guards in place</span>
           </li>
-          <li className="flex items-center gap-2">
+          <li className="flex items-center gap-2.5">
             <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>Live Health Check endpoint verified (<code>GET /api/health</code>)</span>
           </li>

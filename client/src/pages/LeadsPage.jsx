@@ -1,18 +1,38 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/common/ToastContext';
 import {
   getLeads,
   createLead,
   updateLead,
   deleteLead,
 } from '../api/leadApi';
+
+// Design System Primitives
+import Button from '../components/common/Button';
+import { Card } from '../components/common/Card';
+import {
+  TableContainer,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+} from '../components/common/Table';
+import { SkeletonTable } from '../components/common/Skeleton';
+import EmptyState from '../components/common/EmptyState';
+import ErrorState from '../components/common/ErrorState';
+import { StatusBadge, PriorityBadge, SourceBadge } from '../components/common/Badge';
+import DeleteConfirmModal from '../components/common/DeleteConfirmModal';
+
+// Feature Modals & Filters
 import LeadFilterBar from '../components/leads/LeadFilterBar';
 import Pagination from '../components/leads/Pagination';
 import LeadFormModal from '../components/leads/LeadFormModal';
-import DeleteConfirmModal from '../components/common/DeleteConfirmModal';
-import { StatusBadge, PriorityBadge, SourceBadge } from '../components/common/Badge';
-import EmptyState from '../components/common/EmptyState';
+import CSVImportModal from '../components/leads/CSVImportModal';
+
 import {
   Plus,
   Eye,
@@ -22,15 +42,14 @@ import {
   DollarSign,
   TrendingUp,
   Users,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
   RefreshCw,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export default function LeadsPage() {
   const { user, organization } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
 
   // Leads and pagination data
   const [leads, setLeads] = useState([]);
@@ -56,10 +75,10 @@ export default function LeadsPage() {
   // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [notification, setNotification] = useState(null);
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [deletingLead, setDeletingLead] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -81,15 +100,25 @@ export default function LeadsPage() {
       const res = await getLeads(queryParams);
 
       setLeads(res.data || []);
+      const paginationData = res.meta || res.pagination;
       setPagination(
-        res.pagination || {
-          page: filters.page,
-          limit: filters.limit,
-          total: res.data?.length || 0,
-          totalPages: 1,
-          hasNextPage: false,
-          hasPrevPage: false,
-        }
+        paginationData
+          ? {
+              page: Number(paginationData.page) || filters.page,
+              limit: Number(paginationData.limit) || filters.limit,
+              total: typeof paginationData.total === 'number' ? paginationData.total : (res.data?.length || 0),
+              totalPages: Number(paginationData.totalPages) || 1,
+              hasNextPage: Boolean(paginationData.hasNextPage),
+              hasPrevPage: Boolean(paginationData.hasPrevPage),
+            }
+          : {
+              page: filters.page,
+              limit: filters.limit,
+              total: res.data?.length || 0,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPrevPage: false,
+            }
       );
     } catch (err) {
       setError(err.message || 'Failed to fetch leads from the server.');
@@ -107,12 +136,12 @@ export default function LeadsPage() {
     return () => clearTimeout(timer);
   }, [fetchLeads]);
 
-  // Handle filter changes
+  // Filter change handlers
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({
       ...prev,
       [key]: value,
-      page: 1, // Reset to first page when changing filters
+      page: 1,
     }));
   };
 
@@ -134,23 +163,17 @@ export default function LeadsPage() {
     }));
   };
 
-  // Notification helper
-  const showNotification = (type, message) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), 4000);
-  };
-
   // CRUD Handlers
   const handleCreateLead = async (payload) => {
     const res = await createLead(payload);
-    showNotification('success', `Lead "${res.data.name}" created successfully.`);
+    toast.success(`Lead "${res.data.name}" created successfully.`, 'Lead Created');
     fetchLeads();
   };
 
   const handleUpdateLead = async (payload) => {
     if (!editingLead) return;
     const res = await updateLead(editingLead._id, payload);
-    showNotification('success', `Lead "${res.data.name}" updated successfully.`);
+    toast.success(`Lead "${res.data.name}" updated successfully.`, 'Lead Updated');
     setEditingLead(null);
     fetchLeads();
   };
@@ -160,11 +183,11 @@ export default function LeadsPage() {
     setIsDeleting(true);
     try {
       await deleteLead(deletingLead._id);
-      showNotification('success', `Lead "${deletingLead.name}" was permanently deleted.`);
+      toast.success(`Lead "${deletingLead.name}" was permanently deleted.`, 'Lead Deleted');
       setDeletingLead(null);
       fetchLeads();
     } catch (err) {
-      showNotification('error', err.message || 'Failed to delete lead.');
+      toast.error(err.message || 'Failed to delete lead.', 'Delete Failed');
     } finally {
       setIsDeleting(false);
     }
@@ -180,10 +203,12 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Lead Pipeline</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Lead Pipeline
+            </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
               {organization?.name || 'Workspace'}
             </span>
@@ -196,89 +221,73 @@ export default function LeadsPage() {
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => fetchLeads()}
             title="Refresh Leads"
-            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition cursor-pointer"
+            icon={RefreshCw}
+            loading={loading}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCSVModalOpen(true)}
+            icon={FileSpreadsheet}
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <button
+            Import CSV
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition cursor-pointer"
+            icon={Plus}
           >
-            <Plus className="w-4 h-4" />
             Add New Lead
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Pipeline Quick Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <Card className="p-4">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase">Total Leads</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Leads</span>
             <Users className="w-4 h-4 text-indigo-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900">{pagination.total}</div>
           <div className="text-[11px] text-slate-400 mt-1">Across all pipeline stages</div>
-        </div>
+        </Card>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <Card className="p-4">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase">New Inbound</span>
-            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">New Inbound</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-blue-100" />
           </div>
           <div className="text-2xl font-bold text-slate-900">{newLeadsCount}</div>
           <div className="text-[11px] text-slate-400 mt-1">On current page view</div>
-        </div>
+        </Card>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <Card className="p-4">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase">Qualified / Active</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Qualified</span>
             <TrendingUp className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900">{qualifiedCount}</div>
           <div className="text-[11px] text-slate-400 mt-1">Ready for proposal</div>
-        </div>
+        </Card>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <Card className="p-4">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase">Page Pipeline Value</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Pipeline Value</span>
             <DollarSign className="w-4 h-4 text-amber-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900">
             ${totalValue.toLocaleString()}
           </div>
           <div className="text-[11px] text-slate-400 mt-1">Estimated contract value</div>
-        </div>
+        </Card>
       </div>
-
-      {/* Global Notification Banner */}
-      {notification && (
-        <div
-          className={`flex items-center justify-between p-4 rounded-xl border animate-in fade-in duration-200 ${
-            notification.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-rose-50 border-rose-200 text-rose-800'
-          }`}
-        >
-          <div className="flex items-center gap-2 text-xs sm:text-sm font-medium">
-            {notification.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            )}
-            <span>{notification.message}</span>
-          </div>
-          <button
-            onClick={() => setNotification(null)}
-            className="text-xs opacity-60 hover:opacity-100 font-semibold"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {/* Filters and Search Bar */}
       <LeadFilterBar
@@ -288,37 +297,19 @@ export default function LeadsPage() {
       />
 
       {/* Leads Table Container */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        {/* Loading State */}
-        {loading && (
-          <div className="py-20 flex flex-col items-center justify-center space-y-3">
-            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            <p className="text-xs text-slate-500 font-medium">Fetching leads from server...</p>
-          </div>
-        )}
-
-        {/* Error State */}
-        {!loading && error && (
-          <div className="py-12 px-6 text-center space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100">
-              <AlertCircle className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Failed to load leads</h3>
-              <p className="text-xs text-slate-500 mt-1">{error}</p>
-            </div>
-            <button
-              onClick={() => fetchLeads()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Retry Query
-            </button>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && leads.length === 0 && (
+      {loading ? (
+        <SkeletonTable rows={6} cols={6} />
+      ) : error ? (
+        <Card className="p-6">
+          <ErrorState
+            title="Failed to load leads"
+            message={error}
+            onRetry={fetchLeads}
+            retryLabel="Retry Query"
+          />
+        </Card>
+      ) : leads.length === 0 ? (
+        <Card className="p-6">
           <EmptyState
             title="No leads found"
             description={
@@ -329,120 +320,121 @@ export default function LeadsPage() {
             actionLabel="Create Lead"
             onAction={() => setIsCreateModalOpen(true)}
           />
-        )}
+        </Card>
+      ) : (
+        <TableContainer>
+          <Table>
+            <TableHeader>
+              <tr>
+                <TableHead>Prospect / Contact</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead>Budget</TableHead>
+                <TableHead>Added</TableHead>
+                <TableHead align="right">Actions</TableHead>
+              </tr>
+            </TableHeader>
+            <TableBody>
+              {leads.map((lead) => (
+                <TableRow
+                  key={lead._id}
+                  isClickable={true}
+                  onClick={() => navigate(`/leads/${lead._id}`)}
+                >
+                  {/* Lead Contact Info */}
+                  <TableCell>
+                    <div className="font-bold text-slate-900 text-sm hover:text-indigo-600 transition">
+                      {lead.name}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 mt-0.5">
+                      {lead.company && (
+                        <span className="flex items-center gap-1 font-medium text-slate-700">
+                          <Building2 className="w-3 h-3 text-slate-400" />
+                          {lead.company}
+                        </span>
+                      )}
+                      {lead.email && <span>{lead.email}</span>}
+                      {lead.phone && <span>&bull; {lead.phone}</span>}
+                    </div>
+                  </TableCell>
 
-        {/* Data Table */}
-        {!loading && !error && leads.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4 sm:px-6">Prospect / Contact</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Priority</th>
-                  <th className="py-3 px-4">Source</th>
-                  <th className="py-3 px-4">Budget</th>
-                  <th className="py-3 px-4">Added</th>
-                  <th className="py-3 px-4 sm:px-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                {leads.map((lead) => (
-                  <tr
-                    key={lead._id}
-                    className="hover:bg-slate-50/70 transition-colors group cursor-pointer"
-                    onClick={() => navigate(`/leads/${lead._id}`)}
+                  {/* Status Badge */}
+                  <TableCell className="whitespace-nowrap">
+                    <StatusBadge status={lead.status} />
+                  </TableCell>
+
+                  {/* Priority Badge */}
+                  <TableCell className="whitespace-nowrap">
+                    <PriorityBadge priority={lead.priority} />
+                  </TableCell>
+
+                  {/* Source Badge */}
+                  <TableCell className="whitespace-nowrap">
+                    <SourceBadge source={lead.source} />
+                  </TableCell>
+
+                  {/* Budget */}
+                  <TableCell className="whitespace-nowrap font-semibold text-slate-800">
+                    {lead.budget && lead.budget > 0
+                      ? `$${lead.budget.toLocaleString()}`
+                      : <span className="text-slate-400 italic font-normal">Not set</span>}
+                  </TableCell>
+
+                  {/* Created Date */}
+                  <TableCell className="whitespace-nowrap text-slate-500 text-[11px]">
+                    {new Date(lead.createdAt).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </TableCell>
+
+                  {/* Row Actions */}
+                  <TableCell
+                    align="right"
+                    className="whitespace-nowrap"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {/* Lead Contact Info */}
-                    <td className="py-3.5 px-4 sm:px-6">
-                      <div className="font-bold text-slate-900 text-sm group-hover:text-indigo-600 transition">
-                        {lead.name}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500 mt-0.5">
-                        {lead.company && (
-                          <span className="flex items-center gap-1 font-medium text-slate-700">
-                            <Building2 className="w-3 h-3 text-slate-400" />
-                            {lead.company}
-                          </span>
-                        )}
-                        {lead.email && <span>{lead.email}</span>}
-                        {lead.phone && <span>&bull; {lead.phone}</span>}
-                      </div>
-                    </td>
+                    <div className="flex items-center justify-end gap-1">
+                      <Link
+                        to={`/leads/${lead._id}`}
+                        title="View Details"
+                        aria-label={`View details for ${lead.name}`}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Link>
 
-                    {/* Status Badge */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <StatusBadge status={lead.status} />
-                    </td>
+                      <button
+                        type="button"
+                        onClick={() => setEditingLead(lead)}
+                        title="Edit Lead"
+                        aria-label={`Edit ${lead.name}`}
+                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
 
-                    {/* Priority Badge */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <PriorityBadge priority={lead.priority} />
-                    </td>
-
-                    {/* Source Badge */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <SourceBadge source={lead.source} />
-                    </td>
-
-                    {/* Budget */}
-                    <td className="py-3.5 px-4 whitespace-nowrap font-medium text-slate-800">
-                      {lead.budget && lead.budget > 0
-                        ? `$${lead.budget.toLocaleString()}`
-                        : <span className="text-slate-400 italic">Not set</span>}
-                    </td>
-
-                    {/* Created Date */}
-                    <td className="py-3.5 px-4 whitespace-nowrap text-slate-500 text-[11px]">
-                      {new Date(lead.createdAt).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </td>
-
-                    {/* Row Actions */}
-                    <td
-                      className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap"
-                      onClick={(e) => e.stopPropagation()} // Prevent row click navigation
-                    >
-                      <div className="flex items-center justify-end gap-1">
-                        <Link
-                          to={`/leads/${lead._id}`}
-                          title="View Details"
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Link>
-
+                      {canDelete ? (
                         <button
-                          onClick={() => setEditingLead(lead)}
-                          title="Edit Lead"
-                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                          type="button"
+                          onClick={() => setDeletingLead(lead)}
+                          title="Delete Lead"
+                          aria-label={`Delete ${lead.name}`}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                         >
-                          <Edit2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
-                        {canDelete ? (
-                          <button
-                            onClick={() => setDeletingLead(lead)}
-                            title="Delete Lead"
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Pagination Controls */}
-        {!loading && !error && leads.length > 0 && (
+          {/* Pagination Controls */}
           <Pagination
             page={pagination.page}
             totalPages={pagination.totalPages}
@@ -452,8 +444,8 @@ export default function LeadsPage() {
             hasPrevPage={pagination.hasPrevPage}
             onPageChange={handlePageChange}
           />
-        )}
-      </div>
+        </TableContainer>
+      )}
 
       {/* Create Lead Modal */}
       <LeadFormModal
@@ -461,6 +453,21 @@ export default function LeadsPage() {
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateLead}
         isEditing={false}
+      />
+
+      {/* CSV Import Modal */}
+      <CSVImportModal
+        isOpen={isCSVModalOpen}
+        onClose={() => setIsCSVModalOpen(false)}
+        onSuccess={(summary) => {
+          fetchLeads();
+          toast.success(
+            `Successfully imported ${summary.importedCount} lead(s) from CSV.${
+              summary.failedCount > 0 ? ` (${summary.failedCount} failed rows)` : ''
+            }`,
+            'CSV Import Completed'
+          );
+        }}
       />
 
       {/* Edit Lead Modal */}

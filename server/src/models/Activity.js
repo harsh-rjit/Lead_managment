@@ -2,45 +2,43 @@ import mongoose from 'mongoose';
 
 const activitySchema = new mongoose.Schema(
   {
-    organizationId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Organization',
-      required: [true, 'Organization ID is mandatory for multi-tenant isolation'],
-      index: true,
-    },
     leadId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Lead',
       default: null,
       index: true,
     },
-    performedBy: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      default: null,
       index: true,
     },
-    type: {
-      type: String,
-      enum: [
-        'lead_created',
-        'status_changed',
-        'assigned',
-        'ai_scored',
-        'followup_generated',
-        'note_added',
-        'csv_imported',
-      ],
-      required: [true, 'Activity type is required'],
+    organizationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: [true, 'Organization ID is mandatory for multi-tenant isolation'],
+      index: true,
     },
-    description: {
+    action: {
       type: String,
-      required: [true, 'Activity description is required'],
-      trim: true,
+      index: true,
     },
     metadata: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
+    },
+    // Backwards compatibility fields as real paths
+    performedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    type: {
+      type: String,
+      index: true,
+    },
+    description: {
+      type: String,
+      default: '',
     },
   },
   {
@@ -48,7 +46,44 @@ const activitySchema = new mongoose.Schema(
   }
 );
 
-// Compound index for chronological tenant activity feeds
+// Pre-validate synchronization hook
+activitySchema.pre('validate', function () {
+  // Sync userId and performedBy
+  if (!this.userId && this.performedBy) {
+    this.userId = this.performedBy;
+  }
+  if (!this.performedBy && this.userId) {
+    this.performedBy = this.userId;
+  }
+  // Sync action and type
+  if (!this.action && this.type) {
+    this.action = this.type;
+  }
+  if (!this.type && this.action) {
+    this.type = this.action;
+  }
+  // Sync description and metadata
+  if (!this.metadata) {
+    this.metadata = {};
+  }
+  if (this.description && !this.metadata.description) {
+    this.metadata.description = this.description;
+  }
+  if (!this.description && this.metadata.description) {
+    this.description = this.metadata.description;
+  }
+
+  // Validate required core fields
+  if (!this.userId) {
+    this.invalidate('userId', 'User ID is required');
+  }
+  if (!this.action) {
+    this.invalidate('action', 'Action is required');
+  }
+});
+
+// Compound indexes for chronological timeline and tenant audit queries
+activitySchema.index({ leadId: 1, createdAt: -1 });
 activitySchema.index({ organizationId: 1, createdAt: -1 });
 
 const Activity = mongoose.model('Activity', activitySchema);

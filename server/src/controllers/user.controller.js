@@ -34,7 +34,50 @@ export const inviteUser = asyncHandler(async (req, res) => {
   });
 });
 
+export const createUser = inviteUser;
+
+/**
+ * Controller: Change user role
+ * Route: PATCH /api/v1/users/:id/role (Admin only)
+ */
+export const updateUserRole = asyncHandler(async (req, res) => {
+  const updatedUser = await userService.updateUserRole(
+    req.params.id,
+    req.body.role,
+    req.user
+  );
+
+  return sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: `User ${updatedUser.name}'s role updated to '${updatedUser.role}'.`,
+    data: updatedUser,
+  });
+});
+
+/**
+ * Controller: Activate or deactivate user
+ * Route: PATCH /api/v1/users/:id/status (Admin only)
+ */
+export const updateUserStatus = asyncHandler(async (req, res) => {
+  const updatedUser = await userService.updateUserStatus(
+    req.params.id,
+    req.body.status,
+    req.user
+  );
+
+  return sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: `User ${updatedUser.name} is now ${updatedUser.status}.`,
+    data: updatedUser,
+  });
+});
+
 export default {
   getUsers,
   inviteUser,
+  createUser,
+  updateUserRole,
+  updateUserStatus,
 };

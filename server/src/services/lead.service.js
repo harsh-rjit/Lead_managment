@@ -2,6 +2,8 @@ import Lead from '../models/Lead.js';
 import User from '../models/User.js';
 import Activity from '../models/Activity.js';
 import AppError from '../utils/AppError.js';
+import Papa from 'papaparse';
+import { csvLeadRowSchema } from '../validations/lead.validation.js';
 
 class LeadService {
   /**
@@ -34,12 +36,19 @@ class LeadService {
 
     // Record audit activity log
     await Activity.create({
-      organizationId,
       leadId: lead._id,
-      performedBy: userContext.userId,
-      type: 'lead_created',
-      description: `Lead '${lead.name}' created by ${userContext.role}`,
-      metadata: { source: lead.source, priority: lead.priority, status: lead.status },
+      userId: userContext.userId,
+      organizationId,
+      action: 'lead_created',
+      metadata: {
+        leadName: lead.name,
+        company: lead.company,
+        source: lead.source,
+        priority: lead.priority,
+        status: lead.status,
+        budget: lead.budget,
+        description: `Lead '${lead.name}' created by ${userContext.role}`,
+      },
     });
 
     return Lead.findById(lead._id).populate('assignedTo', 'name email role');
@@ -192,26 +201,92 @@ class LeadService {
     // Log Activity for status transitions
     if (updateData.status && updateData.status !== previousStatus) {
       await Activity.create({
-        organizationId,
         leadId: existingLead._id,
-        performedBy: userContext.userId,
-        type: 'status_changed',
-        description: `Lead status updated from '${previousStatus}' to '${updateData.status}'`,
+        userId: userContext.userId,
+        organizationId,
+        action: 'status_changed',
+        metadata: {
+          previousStatus,
+          newStatus: updateData.status,
+          description: `Lead status changed from '${previousStatus}' to '${updateData.status}'`,
+        },
       });
     }
 
     // Log Activity for assignments
-    if (updateData.assignedTo && updateData.assignedTo !== previousAssignedTo) {
+    if (updateData.assignedTo !== undefined && updateData.assignedTo !== previousAssignedTo) {
+      let assignedUserName = 'Unassigned';
+      if (updateData.assignedTo) {
+        const assignedUser = await User.findOne({ _id: updateData.assignedTo, organizationId }).select('name');
+        if (assignedUser) assignedUserName = assignedUser.name;
+      }
+
       await Activity.create({
-        organizationId,
         leadId: existingLead._id,
-        performedBy: userContext.userId,
-        type: 'assigned',
-        description: `Lead reassigned to user ${updateData.assignedTo}`,
+        userId: userContext.userId,
+        organizationId,
+        action: 'lead_assigned',
+        metadata: {
+          previousAssignedTo,
+          newAssignedTo: updateData.assignedTo || null,
+          assignedToId: updateData.assignedTo || null,
+          assignedToName: assignedUserName,
+          description: updateData.assignedTo
+            ? `Lead assigned to ${assignedUserName}`
+            : 'Lead unassigned',
+        },
+      });
+    }
+
+    // Log Activity for other updated fields (name, email, company, budget, requirement, priority)
+    const otherFields = Object.keys(updateData).filter(
+      (k) => k !== 'status' && k !== 'assignedTo' && k !== 'organizationId'
+    );
+    if (otherFields.length > 0) {
+      await Activity.create({
+        leadId: existingLead._id,
+        userId: userContext.userId,
+        organizationId,
+        action: 'lead_updated',
+        metadata: {
+          updatedFields: otherFields,
+          description: `Updated lead details: ${otherFields.join(', ')}`,
+        },
       });
     }
 
     return Lead.findById(existingLead._id).populate('assignedTo', 'name email role');
+  }
+
+  /**
+   * Retrieve chronological activity audit trail for a specific lead
+   *
+   * @param {string} organizationId - From authenticated JWT
+   * @param {string} leadId - Lead ObjectId
+   * @param {Object} userContext - Authenticated user context
+   * @returns {Promise<Array>} Chronological list of activities
+   */
+  async getLeadActivities(organizationId, leadId, userContext) {
+    const lead = await Lead.findOne({ _id: leadId, organizationId });
+
+    if (!lead) {
+      throw new AppError('Lead not found in this organization.', 404);
+    }
+
+    // Role-based boundary: Sales representatives can only view activities for their assigned leads
+    if (
+      userContext.role === 'sales' &&
+      lead.assignedTo &&
+      lead.assignedTo.toString() !== userContext.userId
+    ) {
+      throw new AppError('Access forbidden: You can only view activities for leads assigned to you.', 403);
+    }
+
+    const activities = await Activity.find({ leadId, organizationId })
+      .sort({ createdAt: -1 })
+      .populate('userId', 'name email role');
+
+    return activities;
   }
 
   /**
@@ -232,6 +307,120 @@ class LeadService {
     await Activity.deleteMany({ leadId, organizationId });
 
     return { id: leadId, deleted: true };
+  }
+
+  /**
+   * Bulk import leads from a CSV file buffer
+   *
+   * @param {Object} params
+   * @param {Buffer} params.fileBuffer - Uploaded CSV buffer
+   * @param {Object} params.userContext - Authenticated user { userId, organizationId, role }
+   * @returns {Promise<Object>} Import summary metrics and validation errors
+   */
+  async importLeadsFromCSV({ fileBuffer, userContext }) {
+    if (!fileBuffer || fileBuffer.length === 0) {
+      throw new AppError('Uploaded CSV file is empty. Please provide a valid CSV file.', 400);
+    }
+
+    const csvString = fileBuffer.toString('utf-8');
+
+    // Parse CSV using PapaParse with automatic header trimming and normalization
+    const parseResult = Papa.parse(csvString, {
+      header: true,
+      skipEmptyLines: 'greedy',
+      transformHeader: (header) => header.trim().toLowerCase(),
+    });
+
+    if (parseResult.errors && parseResult.errors.length > 0) {
+      const fatalErrors = parseResult.errors.filter(
+        (e) => e.type === 'Delimiter' || e.code === 'UndetectableDelimiter'
+      );
+      if (fatalErrors.length > 0 && (!parseResult.data || parseResult.data.length === 0)) {
+        throw new AppError('Unable to parse CSV. Please ensure the file is valid and comma-delimited.', 400);
+      }
+    }
+
+    const rows = parseResult.data;
+    if (!rows || rows.length === 0) {
+      throw new AppError('No data rows found in the CSV file. Please include at least one row of lead data.', 400);
+    }
+
+    const validLeads = [];
+    const failedRows = [];
+
+    // Sales users are automatically assigned to leads they import
+    const defaultAssignedTo = userContext.role === 'sales' ? userContext.userId : null;
+
+    rows.forEach((row, index) => {
+      const rowNumber = index + 2; // Row 1 is header
+
+      // Clean string values
+      const cleanedRow = {};
+      for (const [key, value] of Object.entries(row)) {
+        cleanedRow[key] = typeof value === 'string' ? value.trim() : value;
+      }
+
+      // Skip row if completely empty
+      const hasAnyValue = Object.values(cleanedRow).some(
+        (v) => v !== '' && v !== null && v !== undefined
+      );
+      if (!hasAnyValue) {
+        return;
+      }
+
+      const validation = csvLeadRowSchema.safeParse(cleanedRow);
+
+      if (!validation.success) {
+        const issues = validation.error.issues || validation.error.errors || [];
+        const messages = issues.map((i) => i.message);
+        failedRows.push({
+          row: rowNumber,
+          leadName: cleanedRow.name || `Row ${rowNumber}`,
+          errors: messages,
+        });
+      } else {
+        const validatedData = validation.data;
+        validLeads.push({
+          ...validatedData,
+          organizationId: userContext.organizationId,
+          assignedTo: defaultAssignedTo,
+          source: 'csv',
+        });
+      }
+    });
+
+    let insertedLeads = [];
+    if (validLeads.length > 0) {
+      try {
+        insertedLeads = await Lead.insertMany(validLeads, { ordered: false });
+      } catch (insertErr) {
+        if (insertErr.insertedDocs) {
+          insertedLeads = insertErr.insertedDocs;
+        }
+        console.warn('Some leads failed during bulk insertion:', insertErr.message);
+      }
+
+      // Record Activity audit log for tenant
+      Activity.create({
+        organizationId: userContext.organizationId,
+        performedBy: userContext.userId,
+        type: 'csv_imported',
+        description: `Imported ${insertedLeads.length} leads from CSV upload`,
+        metadata: {
+          totalRows: rows.length,
+          importedCount: insertedLeads.length,
+          failedCount: failedRows.length,
+        },
+      }).catch((actErr) => console.warn('Activity log failed (non-critical):', actErr.message));
+    }
+
+    return {
+      totalRows: rows.length,
+      importedCount: insertedLeads.length,
+      failedCount: failedRows.length,
+      errors: failedRows,
+      leads: insertedLeads.slice(0, 10),
+    };
   }
 }
 

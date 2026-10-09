@@ -1,5 +1,41 @@
 import React from 'react';
 
+const BADGE_VARIANTS = {
+  slate: 'bg-slate-100 text-slate-700 border-slate-200',
+  indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  purple: 'bg-purple-50 text-purple-700 border-purple-200',
+  emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  amber: 'bg-amber-50 text-amber-700 border-amber-200',
+  rose: 'bg-rose-50 text-rose-700 border-rose-200',
+  blue: 'bg-blue-50 text-blue-700 border-blue-200',
+};
+
+const BADGE_SIZES = {
+  xs: 'px-2 py-0.5 text-[10px]',
+  sm: 'px-2.5 py-0.5 text-xs',
+  md: 'px-3 py-1 text-xs',
+};
+
+export function Badge({
+  children,
+  variant = 'slate',
+  size = 'sm',
+  dot = false,
+  className = '',
+}) {
+  const variantStyle = BADGE_VARIANTS[variant] || BADGE_VARIANTS.slate;
+  const sizeStyle = BADGE_SIZES[size] || BADGE_SIZES.sm;
+
+  return (
+    <span
+      className={`inline-flex items-center font-semibold rounded-full border ${variantStyle} ${sizeStyle} ${className}`}
+    >
+      {dot && <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-current opacity-70" />}
+      {children}
+    </span>
+  );
+}
+
 /**
  * Reusable Status, Priority, and Source Badge
  */
@@ -27,7 +63,7 @@ export function StatusBadge({ status }) {
 
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${style}`}>
-      <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-current opacity-70"></span>
+      <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-current opacity-70" />
       {label}
     </span>
   );
@@ -59,6 +95,7 @@ export function SourceBadge({ source }) {
 }
 
 export default {
+  Badge,
   StatusBadge,
   PriorityBadge,
   SourceBadge,

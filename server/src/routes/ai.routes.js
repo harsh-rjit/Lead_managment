@@ -1,8 +1,15 @@
 import { Router } from 'express';
-import { analyzeLead, getLeadAnalysis } from '../controllers/ai.controller.js';
+import {
+  analyzeLead,
+  getLeadAnalysis,
+  generateFollowUp,
+} from '../controllers/ai.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
-import { analyzeLeadParamSchema } from '../validations/ai.validation.js';
+import {
+  analyzeLeadParamSchema,
+  generateFollowUpSchema,
+} from '../validations/ai.validation.js';
 
 const router = Router();
 
@@ -21,6 +28,13 @@ router.get(
   '/lead/:leadId',
   validate(analyzeLeadParamSchema),
   getLeadAnalysis
+);
+
+// POST /api/ai/follow-up/:leadId - Generate AI follow-up message (email or short message)
+router.post(
+  '/follow-up/:leadId',
+  validate(generateFollowUpSchema),
+  generateFollowUp
 );
 
 export default router;

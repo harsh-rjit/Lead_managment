@@ -11,7 +11,7 @@
  */
 export const sendResponse = (
   res,
-  { statusCode = 200, success = true, message = '', data = null, meta = null }
+  { statusCode = 200, success = true, message = '', data = null, meta = null, pagination = null }
 ) => {
   const responsePayload = {
     success,
@@ -19,6 +19,7 @@ export const sendResponse = (
     message,
     ...(data !== null && { data }),
     ...(meta && { meta }),
+    ...(pagination && { pagination }),
   };
 
   return res.status(statusCode).json(responsePayload);

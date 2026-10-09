@@ -1,0 +1,483 @@
+{
+  "info": {
+    "_postman_id": "c7f99982-13fa-4001-9a74-982dc1b7fd14",
+    "name": "OpsAI CRM & Lead Automation - V1 API Collection",
+    "description": "Comprehensive Postman Collection covering Authentication, User Management, Lead CRUD, Activity Audit, Automations, AI Intelligence, CSV Import, and Analytics for the V1 application.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "leadId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Register Organization & Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane.admin@acmecorp.com\",\n  \"password\": \"SecurePass123!\",\n  \"organizationName\": \"Acme Global\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "Registers a new tenant organization and primary administrator account."
+          }
+        },
+        {
+          "name": "Login (Auto-sets {{token}})",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('token', jsonData.data.token);",
+                  "    console.log('JWT Token successfully set in collection variables.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane.admin@acmecorp.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Logs in and captures the JWT Bearer token into collection variable {{token}}."
+          }
+        },
+        {
+          "name": "Get Current Profile (/me)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "Retrieves the authenticated user profile and active organization context."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. User Management (Admin Only)",
+      "item": [
+        {
+          "name": "List Organization Users",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"]
+            }
+          }
+        },
+        {
+          "name": "Add / Invite User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set('userId', res.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bob Sales\",\n  \"email\": \"bob.sales@acmecorp.com\",\n  \"role\": \"sales\",\n  \"password\": \"TemporaryPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"]
+            }
+          }
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"manager\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}/role",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "{{userId}}", "role"]
+            }
+          }
+        },
+        {
+          "name": "Update User Status (Activate/Deactivate)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"inactive\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "{{userId}}", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Lead Management (CRUD)",
+      "item": [
+        {
+          "name": "Create Lead (Auto-sets {{leadId}})",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data._id) {",
+                  "    pm.collectionVariables.set('leadId', res.data._id);",
+                  "    console.log('Set leadId to:', res.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Michael Scott\",\n  \"company\": \"Dunder Mifflin Inc\",\n  \"email\": \"mscott@dundermifflin.com\",\n  \"phone\": \"+1-570-555-0145\",\n  \"requirement\": \"Looking for 100 enterprise licenses with AI analytics and workflow automation\",\n  \"budget\": 35000,\n  \"priority\": \"high\",\n  \"source\": \"website\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads"]
+            }
+          }
+        },
+        {
+          "name": "Get Leads (Filter, Search, Paginate)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads?page=1&limit=10&status=new&sortBy=createdAt&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "new" },
+                { "key": "sortBy", "value": "createdAt" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Lead By ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads", "{{leadId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Lead",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"qualified\",\n  \"priority\": \"urgent\",\n  \"budget\": 50000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads", "{{leadId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Lead Activity History",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads", "{{leadId}}", "activities"]
+            }
+          }
+        },
+        {
+          "name": "Delete Lead (Admin/Manager)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads", "{{leadId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. CSV Bulk Lead Import",
+      "item": [
+        {
+          "name": "Import Leads CSV",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/import/csv",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "leads", "import", "csv"]
+            },
+            "description": "Upload a CSV file containing headers: name, company, email, phone, budget, priority, status."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. AI Intelligence",
+      "item": [
+        {
+          "name": "Analyze Lead Qualification",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/analyze/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "ai", "analyze", "{{leadId}}"]
+            },
+            "description": "Runs Gemini model on lead details, generating qualification score (0-100), urgency priority, summary, bullet reasons, and recommended sales action."
+          }
+        },
+        {
+          "name": "Get Latest AI Analysis",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/lead/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "ai", "lead", "{{leadId}}"]
+            }
+          }
+        },
+        {
+          "name": "Generate Follow-up Message",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"email\",\n  \"tone\": \"professional\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/follow-up/{{leadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "ai", "follow-up", "{{leadId}}"]
+            },
+            "description": "Generates a personalized follow-up email or short message based on tone ('professional' | 'friendly') and type ('email' | 'short_message')."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Analytics Dashboard",
+      "item": [
+        {
+          "name": "Get Analytics Overview",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/analytics/overview",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "analytics", "overview"]
+            },
+            "description": "Calculates tenant-isolated metrics: total leads, conversion rate, closed win rate, leads by status, leads by source, average AI score, and 30-day timeline."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Automation Engine",
+      "item": [
+        {
+          "name": "List Automation Rules",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/automations/rules",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "automations", "rules"]
+            }
+          }
+        },
+        {
+          "name": "Evaluate Stale Leads (>24h without activity)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/automations/evaluate-stale",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "automations", "evaluate-stale"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

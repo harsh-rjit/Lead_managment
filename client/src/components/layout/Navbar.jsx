@@ -9,7 +9,6 @@ export default function Navbar() {
   const { user, organization, isAuthenticated, logout } = useAuth();
 
   const baseNavLinks = [
-    { name: 'System Health', path: '/' },
     { name: 'Architecture Blueprint', path: '/blueprint' },
   ];
 

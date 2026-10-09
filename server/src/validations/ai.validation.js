@@ -39,3 +39,38 @@ export const geminiAnalysisOutputSchema = z.object({
     .trim()
     .min(3, { message: 'Recommended next action must be at least 3 characters' }),
 });
+
+/**
+ * Validation schema for POST /api/ai/follow-up/:leadId
+ */
+export const generateFollowUpSchema = {
+  params: z.object({
+    leadId: z.string().regex(MONGO_ID_REGEX, {
+      message: 'Invalid lead ID format (must be 24-character hexadecimal ObjectId)',
+    }),
+  }),
+  body: z.object({
+    type: z.enum(['email', 'short_message'], {
+      errorMap: () => ({ message: "Type must be either 'email' or 'short_message'" }),
+    }).default('email'),
+    tone: z.enum(['professional', 'friendly'], {
+      errorMap: () => ({ message: "Tone must be either 'professional' or 'friendly'" }),
+    }).default('professional'),
+  }),
+};
+
+/**
+ * Zod validation schema for Gemini's structured follow-up JSON output
+ */
+export const geminiFollowUpOutputSchema = z.object({
+  subject: z.string().optional().default(''),
+  body: z
+    .string({ required_error: 'Message body is required' })
+    .trim()
+    .min(5, { message: 'Message body must be at least 5 characters' }),
+  callToAction: z
+    .string({ required_error: 'Call to action is required' })
+    .trim()
+    .min(3, { message: 'Call to action must be at least 3 characters' }),
+});
+

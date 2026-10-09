@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/common/ToastContext';
+
+// Design System Primitives
+import Button from '../components/common/Button';
+import { Card } from '../components/common/Card';
+import Input from '../components/common/Input';
+
 import {
   Mail,
   Lock,
@@ -9,7 +16,6 @@ import {
   AlertCircle,
   Sparkles,
   ArrowRight,
-  Loader2,
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -26,6 +32,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
 
   const from = location.state?.from?.pathname || '/dashboard';
 
@@ -64,140 +71,105 @@ export default function LoginPage() {
 
     try {
       await login(formData);
-      // Navigate to the originally requested route or fallback to dashboard
+      toast.success('Successfully authenticated. Welcome back!', 'Signed In');
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      const msg = err.message || 'Login failed. Please check your credentials.';
+      setError(msg);
+      toast.error(msg, 'Authentication Failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto py-8 sm:py-12">
+    <div className="max-w-md w-full mx-auto py-8 sm:py-12 px-4">
       {/* Brand Header */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 mb-3">
-          <Sparkles className="w-6 h-6" />
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600 text-white shadow-xs mb-3">
+          <Sparkles className="w-6 h-6 text-amber-300" />
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           Sign In to OpsAI
         </h1>
-        <p className="text-slate-600 mt-2 text-sm">
-          Access your multi-tenant AI operations workspace.
+        <p className="text-slate-500 mt-2 text-xs sm:text-sm">
+          Access your organization AI business operations workspace
         </p>
       </div>
 
       {/* Login Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 sm:p-8">
-        {/* Error Alert */}
+      <Card className="p-6 sm:p-8">
         {error && (
           <div className="mb-6 rounded-xl bg-rose-50 border border-rose-200 p-4 text-rose-900 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-sm">Authentication Failed</p>
+              <p className="font-bold text-xs">Authentication Failed</p>
               <p className="text-xs text-rose-700 mt-0.5">{error}</p>
             </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Work Email
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Mail className="w-4 h-4" />
-              </div>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="name@company.com"
-                disabled={loading}
-                className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none ${
-                  fieldErrors.email
-                    ? 'border-rose-300 bg-rose-50/30 text-rose-900 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                    : 'border-slate-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600'
-                }`}
-              />
-            </div>
-            {fieldErrors.email && (
-              <p className="text-xs text-rose-600 mt-1 font-medium">{fieldErrors.email}</p>
-            )}
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Work Email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="name@company.com"
+            disabled={loading}
+            error={fieldErrors.email}
+            icon={Mail}
+          />
 
-          {/* Password */}
-          <div>
-            <div className="flex justify-between items-center mb-1.5">
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Password
-              </label>
-            </div>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Lock className="w-4 h-4" />
-              </div>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Enter your password"
-                disabled={loading}
-                className={`w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none ${
-                  fieldErrors.password
-                    ? 'border-rose-300 bg-rose-50/30 text-rose-900 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                    : 'border-slate-300 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600'
-                }`}
-              />
+          <Input
+            label="Password"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            value={formData.password}
+            onChange={handleChange}
+            placeholder="Enter your password"
+            disabled={loading}
+            error={fieldErrors.password}
+            icon={Lock}
+            rightElement={
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
-            </div>
-            {fieldErrors.password && (
-              <p className="text-xs text-rose-600 mt-1 font-medium">{fieldErrors.password}</p>
-            )}
-          </div>
+            }
+          />
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-98 disabled:opacity-50 text-white font-semibold text-sm shadow-md shadow-indigo-100 transition-all cursor-pointer"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Signing In...
-              </>
-            ) : (
-              <>
-                Sign In
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+          <div className="pt-2">
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              fullWidth={true}
+              loading={loading}
+              rightIcon={ArrowRight}
+            >
+              {loading ? 'Authenticating...' : 'Sign In'}
+            </Button>
+          </div>
         </form>
 
-        {/* Footer Link */}
         <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-500">
           Don't have an organization account yet?{' '}
           <Link
             to="/register"
-            className="font-semibold text-indigo-600 hover:text-indigo-700 transition"
+            className="font-bold text-indigo-600 hover:text-indigo-700 transition"
           >
             Create an Organization
           </Link>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import React from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Trash2 } from 'lucide-react';
+import { Modal, ModalBody, ModalFooter } from './Modal';
+import Button from './Button';
 
 export default function DeleteConfirmModal({
   isOpen,
@@ -9,40 +11,45 @@ export default function DeleteConfirmModal({
   onCancel,
   loading = false,
 }) {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-        <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
-          <AlertTriangle className="w-6 h-6" />
+    <Modal
+      isOpen={isOpen}
+      onClose={loading ? undefined : onCancel}
+      size="md"
+      ariaLabelledBy="delete-modal-title"
+    >
+      <ModalBody className="space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shadow-2xs">
+          <AlertTriangle className="w-6 h-6" aria-hidden="true" />
         </div>
 
         <div className="space-y-1">
-          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+          <h3 id="delete-modal-title" className="text-base font-bold text-slate-900 tracking-tight">
+            {title}
+          </h3>
           <p className="text-xs text-slate-500 leading-relaxed">{message}</p>
         </div>
+      </ModalBody>
 
-        <div className="flex justify-end gap-2.5 pt-2">
-          <button
-            type="button"
-            disabled={loading}
-            onClick={onCancel}
-            className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={onConfirm}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-semibold shadow-sm transition cursor-pointer"
-          >
-            {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            {loading ? 'Deleting...' : 'Delete Lead'}
-          </button>
-        </div>
-      </div>
-    </div>
+      <ModalFooter>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={loading}
+          onClick={onCancel}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="danger"
+          size="sm"
+          loading={loading}
+          icon={Trash2}
+          onClick={onConfirm}
+        >
+          {loading ? 'Deleting...' : 'Confirm Delete'}
+        </Button>
+      </ModalFooter>
+    </Modal>
   );
 }

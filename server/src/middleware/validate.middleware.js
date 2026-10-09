@@ -15,17 +15,30 @@ export const validate = (schema) => async (req, res, next) => {
       req.body = await schema.body.parseAsync(req.body);
     }
     if (schema.query) {
-      req.query = await schema.query.parseAsync(req.query);
+      const parsedQuery = await schema.query.parseAsync(req.query);
+      Object.defineProperty(req, 'query', {
+        value: parsedQuery,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
     }
     if (schema.params) {
-      req.params = await schema.params.parseAsync(req.params);
+      const parsedParams = await schema.params.parseAsync(req.params);
+      Object.defineProperty(req, 'params', {
+        value: parsedParams,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
     }
     next();
   } catch (err) {
-    if (err.errors) {
+    const issues = err.issues || err.errors;
+    if (issues && Array.isArray(issues)) {
       // Format Zod issues into clear field-specific error messages
-      const formattedErrors = err.errors.map((e) => ({
-        field: e.path.join('.'),
+      const formattedErrors = issues.map((e) => ({
+        field: Array.isArray(e.path) ? e.path.join('.') : e.path,
         message: e.message,
       }));
 

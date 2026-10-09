@@ -17,7 +17,7 @@ const automationSchema = new mongoose.Schema(
     },
     trigger: {
       type: String,
-      enum: ['lead_created', 'score_above', 'status_updated'],
+      enum: ['lead_created', 'score_above', 'status_updated', 'lead_inactive_24h'],
       required: [true, 'Trigger type is required'],
     },
     condition: {
@@ -26,17 +26,37 @@ const automationSchema = new mongoose.Schema(
     },
     action: {
       type: String,
-      enum: ['auto_assign', 'update_status', 'notify_slack', 'generate_followup'],
+      enum: [
+        'set_priority',
+        'create_followup_activity',
+        'auto_assign',
+        'update_status',
+        'notify_slack',
+        'generate_followup',
+      ],
       required: [true, 'Action type is required'],
     },
     actionConfig: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    description: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     isActive: {
       type: Boolean,
       default: true,
       index: true,
+    },
+    lastExecutedAt: {
+      type: Date,
+      default: null,
+    },
+    executionCount: {
+      type: Number,
+      default: 0,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

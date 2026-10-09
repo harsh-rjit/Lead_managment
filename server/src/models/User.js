@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: {
-        values: ['active', 'invited', 'suspended'],
+        values: ['active', 'inactive', 'invited', 'suspended'],
         message: '{VALUE} is not a valid status',
       },
       default: 'active',

@@ -93,9 +93,14 @@ class AuthService {
       throw userError;
     }
 
-    // 6. Return sanitized response (never return password or passwordHash)
+    // 6. Generate signed JWT token
+    const token = this.generateToken(user);
+
+    // 7. Return sanitized response (never return password or passwordHash)
     return {
+      token,
       user: {
+        _id: user._id,
         id: user._id,
         name: user.name,
         email: user.email,
@@ -104,6 +109,7 @@ class AuthService {
         createdAt: user.createdAt,
       },
       organization: {
+        _id: organization._id,
         id: organization._id,
         name: organization.name,
         slug: organization.slug,
@@ -163,6 +169,7 @@ class AuthService {
     return {
       token,
       user: {
+        _id: user._id,
         id: user._id,
         name: user.name,
         email: user.email,
@@ -171,6 +178,7 @@ class AuthService {
         lastLoginAt: user.lastLoginAt,
       },
       organization: {
+        _id: organization._id,
         id: organization._id,
         name: organization.name,
         slug: organization.slug,
@@ -198,6 +206,7 @@ class AuthService {
 
     return {
       user: {
+        _id: user._id,
         id: user._id,
         name: user.name,
         email: user.email,
@@ -207,6 +216,7 @@ class AuthService {
         lastLoginAt: user.lastLoginAt,
       },
       organization: {
+        _id: organization._id,
         id: organization._id,
         name: organization.name,
         slug: organization.slug,

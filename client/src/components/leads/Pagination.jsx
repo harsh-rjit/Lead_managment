@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Button from '../common/Button';
 
 export default function Pagination({
   page,
@@ -24,27 +25,29 @@ export default function Pagination({
       </div>
 
       <div className="flex items-center gap-1.5">
-        <button
-          onClick={() => onPageChange(page - 1)}
+        <Button
+          variant="outline"
+          size="xs"
           disabled={!hasPrevPage}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          onClick={() => onPageChange(page - 1)}
+          icon={ChevronLeft}
         >
-          <ChevronLeft className="w-3.5 h-3.5" />
           Previous
-        </button>
+        </Button>
 
-        <span className="px-3 py-1.5 rounded-lg bg-slate-50 font-semibold text-slate-800">
+        <span className="px-3 py-1 rounded-lg bg-slate-50 border border-slate-200/80 font-semibold text-slate-800 text-xs">
           Page {page} of {totalPages || 1}
         </span>
 
-        <button
-          onClick={() => onPageChange(page + 1)}
+        <Button
+          variant="outline"
+          size="xs"
           disabled={!hasNextPage}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          onClick={() => onPageChange(page + 1)}
+          rightIcon={ChevronRight}
         >
           Next
-          <ChevronRight className="w-3.5 h-3.5" />
-        </button>
+        </Button>
       </div>
     </div>
   );
